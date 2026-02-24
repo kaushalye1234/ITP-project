@@ -1,0 +1,267 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║              EQUIPMENT CATEGORIES - QUICK REFERENCE CARD                     ║
+║                        Keep this handy!                                      ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+✅ CURRENT STATUS
+═════════════════════════════════════════════════════════════════════════════
+✅ Database: 20 categories in equipment_categories table
+✅ Backend: API endpoint /api/equipment/categories working
+✅ Frontend: Categories appear in Equipment page dropdown
+✅ No code changes needed - system was ready!
+
+📦 ALL 20 EQUIPMENT CATEGORIES
+═════════════════════════════════════════════════════════════════════════════
+ 1. ⚡ Power Tools              11. 🔌 Generators & Power
+ 2. 🔨 Hand Tools               12. 💨 Compressors & Pneumatic
+ 3. 🪜 Ladders & Scaffolding    13. 🧹 Cleaning Equipment
+ 4. 🧱 Concrete & Masonry       14. ⬆️ Lifting Equipment
+ 5. 🌱 Gardening Tools          15. 📏 Measuring & Leveling
+ 6. 🦺 Safety Equipment         16. ✂️ Cutting Tools
+ 7. 🎨 Painting Equipment       17. 🔨 Demolition Tools
+ 8. 🔧 Plumbing Tools           18. 🔲 Flooring Tools
+ 9. ⚡ Electrical Tools         19. ⬜ Tiling Tools
+10. ⚒️ Welding Equipment        20. 🪚 Woodworking Tools
+
+📝 QUICK SQL COMMANDS
+═════════════════════════════════════════════════════════════════════════════
+
+View all categories:
+┌────────────────────────────────────────────────────────────────────────────┐
+│ SELECT * FROM equipment_categories ORDER BY category_name;                 │
+└────────────────────────────────────────────────────────────────────────────┘
+
+Add new category:
+┌────────────────────────────────────────────────────────────────────────────┐
+│ INSERT INTO equipment_categories (category_name, description,              │
+│                                    category_icon, is_active)               │
+│ VALUES ('New Category', 'Description', '🔥', TRUE);                       │
+└────────────────────────────────────────────────────────────────────────────┘
+
+Update category:
+┌────────────────────────────────────────────────────────────────────────────┐
+│ UPDATE equipment_categories                                                │
+│ SET description = 'Updated', category_icon = '⭐'                         │
+│ WHERE category_name = 'Category Name';                                    │
+└────────────────────────────────────────────────────────────────────────────┘
+
+Disable category (don't delete!):
+┌────────────────────────────────────────────────────────────────────────────┐
+│ UPDATE equipment_categories SET is_active = FALSE                          │
+│ WHERE category_name = 'Old Category';                                     │
+└────────────────────────────────────────────────────────────────────────────┘
+
+View equipment by category:
+┌────────────────────────────────────────────────────────────────────────────┐
+│ SELECT ec.category_name, COUNT(ei.equipment_id) as count                  │
+│ FROM equipment_categories ec                                               │
+│ LEFT JOIN equipment_inventory ei                                           │
+│   ON ec.equipment_category_id = ei.equipment_category_id                  │
+│ GROUP BY ec.category_name ORDER BY count DESC;                            │
+└────────────────────────────────────────────────────────────────────────────┘
+
+🌐 API ENDPOINTS
+═════════════════════════════════════════════════════════════════════════════
+
+Get all categories:
+  GET http://localhost:8083/api/equipment/categories
+
+Get equipment (with optional category filter):
+  GET http://localhost:8083/api/equipment?categoryId=1
+
+💻 TERMINAL COMMANDS
+═════════════════════════════════════════════════════════════════════════════
+
+Connect to database:
+  mysql -u root -p2002Chamindu -D skilled_worker_booking
+
+Start backend:
+  cd backend
+  mvnw spring-boot:run
+
+Start frontend:
+  cd frontend
+  npm run dev
+
+🎯 COMMON TASKS
+═════════════════════════════════════════════════════════════════════════════
+
+Add equipment to a category:
+  1. Login as supplier
+  2. Go to Equipment page
+  3. Click "Add Equipment"
+  4. Select category from dropdown
+  5. Fill details and submit
+
+Filter equipment by category:
+  1. Go to Equipment page
+  2. Use category dropdown filter
+  3. Select desired category
+  4. View filtered results
+
+View category statistics:
+  SELECT category_name,
+         COUNT(ei.equipment_id) as items,
+         SUM(ei.quantity_total) as total_units
+  FROM equipment_categories ec
+  LEFT JOIN equipment_inventory ei
+    ON ec.equipment_category_id = ei.equipment_category_id
+  GROUP BY category_name;
+
+⚠️ IMPORTANT WARNINGS
+═════════════════════════════════════════════════════════════════════════════
+
+❌ DON'T delete categories with equipment!
+   Check first:
+   SELECT COUNT(*) FROM equipment_inventory
+   WHERE equipment_category_id = X;
+
+❌ DON'T delete categories directly!
+   Instead: UPDATE equipment_categories SET is_active = FALSE
+
+✅ DO migrate equipment before removing category:
+   UPDATE equipment_inventory
+   SET equipment_category_id = NEW_ID
+   WHERE equipment_category_id = OLD_ID;
+
+🔍 TROUBLESHOOTING
+═════════════════════════════════════════════════════════════════════════════
+
+Categories not showing?
+  1. Check: http://localhost:8083/api/equipment/categories
+  2. Verify database: SELECT COUNT(*) FROM equipment_categories;
+  3. Check browser console for errors
+  4. Ensure backend is running
+
+Can't add equipment?
+  1. Check category exists in database
+  2. Verify supplier account is active
+  3. Check foreign key constraints
+  4. Review backend logs
+
+📊 CATEGORY USAGE EXAMPLES
+═════════════════════════════════════════════════════════════════════════════
+
+Power Tools (⚡):
+  - Cordless Drills (Makita, DeWalt, Bosch)
+  - Circular Saws (7-1/4", 10")
+  - Impact Drivers
+  - Angle Grinders (4", 9")
+  - Jigsaws, Sanders
+
+Hand Tools (🔨):
+  - Hammer Sets
+  - Wrench Sets (Metric, Imperial)
+  - Screwdriver Sets
+  - Pliers, Cutters
+  - Tape Measures
+
+Ladders & Scaffolding (🪜):
+  - 6ft Aluminum Ladders
+  - 12ft Extension Ladders
+  - Scaffolding Sets (6ft, 12ft)
+  - Platform Ladders
+  - Step Stools
+
+Generators & Power (🔌):
+  - 5KVA Portable Generators
+  - 10KVA Diesel Generators
+  - Power Inverters
+  - Extension Cables (25m, 50m)
+  - Power Strips
+
+Cleaning Equipment (🧹):
+  - Pressure Washers (2000 PSI, 3000 PSI)
+  - Wet & Dry Vacuum Cleaners
+  - Floor Polishers
+  - Carpet Cleaners
+  - Steam Cleaners
+
+🔗 RELATED FILES
+═════════════════════════════════════════════════════════════════════════════
+📄 equipment_categories_management.sql  - Complete SQL script
+📄 EQUIPMENT_CATEGORIES_COMPLETE.md     - Full documentation
+📄 EQUIPMENT_QUICK_REFERENCE.txt        - This file
+
+🎯 REAL-WORLD PRICING EXAMPLES (Sri Lanka)
+═════════════════════════════════════════════════════════════════════════════
+
+Power Tools:
+  Cordless Drill       - LKR 1,500/day (Deposit: 5,000)
+  Circular Saw         - LKR 2,000/day (Deposit: 8,000)
+  Angle Grinder        - LKR 1,000/day (Deposit: 4,000)
+
+Generators:
+  5KVA Generator       - LKR 3,000/day (Deposit: 15,000)
+  10KVA Generator      - LKR 5,000/day (Deposit: 25,000)
+
+Ladders & Scaffolding:
+  6ft Ladder           - LKR 500/day (Deposit: 2,000)
+  Scaffolding Set      - LKR 2,500/day (Deposit: 10,000)
+
+Cleaning:
+  Pressure Washer      - LKR 2,500/day (Deposit: 10,000)
+  Vacuum Cleaner       - LKR 1,500/day (Deposit: 5,000)
+
+📈 POPULAR CATEGORY COMBINATIONS
+═════════════════════════════════════════════════════════════════════════════
+
+Construction Project:
+  ✓ Power Tools
+  ✓ Ladders & Scaffolding
+  ✓ Concrete & Masonry
+  ✓ Safety Equipment
+  ✓ Measuring & Leveling
+
+Home Renovation:
+  ✓ Power Tools
+  ✓ Hand Tools
+  ✓ Painting Equipment
+  ✓ Ladders
+  ✓ Cleaning Equipment
+
+Electrical Work:
+  ✓ Electrical Tools
+  ✓ Ladders
+  ✓ Safety Equipment
+  ✓ Measuring & Leveling
+  ✓ Power Tools
+
+Garden Maintenance:
+  ✓ Gardening Tools
+  ✓ Power Tools
+  ✓ Cleaning Equipment
+  ✓ Safety Equipment
+
+💡 PRO TIPS
+═════════════════════════════════════════════════════════════════════════════
+
+✨ Use clear category names matching industry standards
+✨ Add relevant icons for visual appeal
+✨ Write detailed descriptions for better SEO
+✨ Keep categories focused and specific
+✨ Monitor which categories are most rented
+✨ Disable unused categories instead of deleting
+✨ Group related equipment in same category
+✨ Update prices seasonally based on demand
+✨ Add safety equipment bundle discounts
+
+📞 SUPPORT FILES
+═════════════════════════════════════════════════════════════════════════════
+
+For detailed information:
+  - equipment_categories_management.sql (All SQL commands)
+  - EQUIPMENT_CATEGORIES_COMPLETE.md (Full guide)
+
+Test the system:
+  - Backend: http://localhost:8083/api/equipment/categories
+  - Frontend: http://localhost:5173 → Equipment page
+
+═════════════════════════════════════════════════════════════════════════════
+✅ System Status: FULLY OPERATIONAL
+📅 Date: February 24, 2026
+📊 Total Categories: 20
+🎯 Integration: Database → Backend → Frontend
+🚀 Ready to Use: YES
+═════════════════════════════════════════════════════════════════════════════
+

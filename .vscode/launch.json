@@ -1,0 +1,14 @@
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Spring Boot-SkilledWorkerApplication<skilledworker>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.itp.skilledworker.SkilledWorkerApplication",
+            "projectName": "skilledworker",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}
