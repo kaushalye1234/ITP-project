@@ -54,6 +54,14 @@ public class ReviewService {
         return reviewRepository.findAll();
     }
 
+    public List<Review> getMyReviews(Integer reviewerUserId) {
+        return reviewRepository.findByReviewer_UserId(reviewerUserId);
+    }
+
+    public List<Complaint> getMyComplaints(Integer complainantUserId) {
+        return complaintRepository.findByComplainant_UserId(complainantUserId);
+    }
+
     @Transactional
     public Complaint submitComplaint(Integer complainantUserId, String category,
             String title, String description, Integer bookingId) {

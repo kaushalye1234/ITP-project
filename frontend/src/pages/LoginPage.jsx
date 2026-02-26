@@ -1,8 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 
-export default function LoginPage({ onSwitchToRegister }) {
-    const { login } = useAuth();
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+
+const FEATURES = [
+    { icon: '👷', text: 'Hire verified skilled workers' },
+    { icon: '📅', text: 'Easy online booking & scheduling' },
+    { icon: '⭐', text: 'Trusted reviews & ratings' },
+    { icon: '🔧', text: 'Rent tools & equipment' },
+];
+
+export default function LoginPage() {
+    const navigate = useNavigate();
+    const { login, googleLogin } = useAuth();
+    const googleBtnRef = useRef(null);
     const [form, setForm] = useState({ email: '', password: '' });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -10,17 +22,26 @@ export default function LoginPage({ onSwitchToRegister }) {
     const [forgotEmail, setForgotEmail] = useState('');
     const [forgotMsg, setForgotMsg] = useState('');
 
-    const handleLogin = async (e) => {
-        e.preventDefault();
-        setError('');
-        setLoading(true);
-        try {
-            await login(form.email, form.password);
-        } catch (err) {
-            setError(err.response?.data?.message || 'Login failed. Check your credentials.');
-        } finally {
-            setLoading(false);
+    const handleGoogleResponse = async (response) => {
+        setError(''); setLoading(true);
+        try { await googleLogin(response.credential); }
+        catch (err) { setError(err.response?.data?.message || 'Google login failed.'); }
+        finally { setLoading(false); }
+    };
+
+    useEffect(() => {
+        if (!GOOGLE_CLIENT_ID || !window.google?.accounts) return;
+        window.google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleGoogleResponse });
+        if (googleBtnRef.current) {
+            window.google.accounts.id.renderButton(googleBtnRef.current, { theme: 'outline', size: 'large', shape: 'pill', width: '100%' });
         }
+    }, []);
+
+    const handleLogin = async (e) => {
+        e.preventDefault(); setError(''); setLoading(true);
+        try { await login(form.email, form.password); }
+        catch (err) { setError(err.response?.data?.message || 'Login failed. Check your credentials.'); }
+        finally { setLoading(false); }
     };
 
     const handleForgot = async (e) => {
@@ -29,126 +50,130 @@ export default function LoginPage({ onSwitchToRegister }) {
             const { authAPI } = await import('../api');
             const res = await authAPI.forgotPassword(forgotEmail);
             setForgotMsg(res.data.data || res.data.message);
-        } catch (err) {
-            setForgotMsg('Error: ' + (err.response?.data?.message || 'Something went wrong'));
-        }
+        } catch (err) { setForgotMsg('Error: ' + (err.response?.data?.message || 'Something went wrong')); }
     };
 
-    if (forgotMode) {
-        return (
-            <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-slate-100 flex items-center justify-center p-4">
-                <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
-                    <h2 className="text-2xl font-bold text-slate-800 mb-2">Reset Password</h2>
-                    <p className="text-slate-500 mb-6 text-sm">Enter your email and we'll send a reset link.</p>
-                    <form onSubmit={handleForgot} className="space-y-4">
-                        <input
-                            type="email"
-                            placeholder="Email address"
-                            value={forgotEmail}
-                            onChange={e => setForgotEmail(e.target.value)}
-                            required
-                            className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        />
-                        <button
-                            type="submit"
-                            className="w-full bg-indigo-600 text-white rounded-xl py-3 font-semibold hover:bg-indigo-700 transition-colors"
-                        >
+    /* ── Forgot password overlay ── */
+    if (forgotMode) return (
+        <div className="auth-shell">
+            {/* Left panel */}
+            <div className="auth-panel-left">
+                <div style={{ fontSize: 56, marginBottom: 16 }}>🔑</div>
+                <h2 style={{ fontSize: 26, fontWeight: 800, marginBottom: 8 }}>Forgot Password?</h2>
+                <p style={{ opacity: 0.85, fontSize: 14, textAlign: 'center', maxWidth: 280 }}>
+                    No worries! We'll send you a reset link to your email address.
+                </p>
+            </div>
+            {/* Right panel */}
+            <div className="auth-panel-right">
+                <div style={{ width: '100%', maxWidth: 400 }}>
+                    <h3 style={{ fontSize: 22, fontWeight: 800, color: '#0c4a6e', marginBottom: 6 }}>Reset Password</h3>
+                    <p style={{ fontSize: 13, color: '#64748b', marginBottom: 24 }}>Enter your email to receive a reset link.</p>
+                    <form onSubmit={handleForgot} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                        <div>
+                            <label className="hm-label">Email Address</label>
+                            <input className="hm-input" type="email" placeholder="you@example.com"
+                                value={forgotEmail} onChange={e => setForgotEmail(e.target.value)} required />
+                        </div>
+                        <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
                             Send Reset Link
                         </button>
-                        {forgotMsg && (
-                            <div className="bg-indigo-50 border border-indigo-200 text-indigo-800 rounded-xl p-3 text-sm break-all">
-                                {forgotMsg}
-                            </div>
-                        )}
-                        <button
-                            type="button"
-                            onClick={() => setForgotMode(false)}
-                            className="w-full text-slate-500 hover:text-slate-700 text-sm"
-                        >
+                        {forgotMsg && <div className="alert-info">{forgotMsg}</div>}
+                        <button type="button" onClick={() => setForgotMode(false)}
+                            style={{ background: 'none', border: 'none', color: '#0891b2', fontSize: 13, fontWeight: 600, cursor: 'pointer', paddingTop: 4 }}>
                             ← Back to Login
                         </button>
                     </form>
                 </div>
             </div>
-        );
-    }
+        </div>
+    );
 
+    /* ── Main login ── */
     return (
-        <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-slate-100 flex items-center justify-center p-4">
-            <div className="w-full max-w-md">
-                {/* Branding */}
-                <div className="text-center mb-8">
-                    <div className="bg-indigo-600 text-white w-16 h-16 rounded-2xl flex items-center justify-center text-3xl font-bold mx-auto mb-4 shadow-lg">S</div>
-                    <h1 className="text-3xl font-extrabold text-slate-800">SkillConnect</h1>
-                    <p className="text-slate-500 mt-1">On-Demand Skilled Worker Platform</p>
+        <div className="auth-shell">
+            {/* Left panel — branding */}
+            <div className="auth-panel-left">
+                <div style={{
+                    width: 68, height: 68,
+                    background: 'rgba(255,255,255,0.2)',
+                    borderRadius: 20, display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', fontSize: 32, fontWeight: 900,
+                    marginBottom: 20, backdropFilter: 'blur(4px)'
+                }}>S</div>
+                <h1 style={{ fontSize: 30, fontWeight: 900, marginBottom: 6, letterSpacing: '-0.5px' }}>SkillConnect</h1>
+                <p style={{ fontSize: 14, opacity: 0.85, marginBottom: 36, textAlign: 'center' }}>
+                    Sri Lanka's #1 On-Demand Skilled Worker Platform
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14, width: '100%', maxWidth: 280 }}>
+                    {FEATURES.map(f => (
+                        <div key={f.text} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <span style={{ fontSize: 20, flexShrink: 0 }}>{f.icon}</span>
+                            <span style={{ fontSize: 13, opacity: 0.9 }}>{f.text}</span>
+                        </div>
+                    ))}
                 </div>
+            </div>
 
-                <div className="bg-white rounded-2xl shadow-xl p-8">
-                    <h2 className="text-xl font-bold text-slate-800 mb-6">Welcome back</h2>
+            {/* Right panel — form */}
+            <div className="auth-panel-right">
+                <div style={{ width: '100%', maxWidth: 400 }} className="fade-in">
+                    <h2 style={{ fontSize: 26, fontWeight: 800, color: '#0c4a6e', marginBottom: 4 }}>Welcome back!</h2>
+                    <p style={{ fontSize: 13, color: '#64748b', marginBottom: 28 }}>Sign in to your SkillConnect account.</p>
 
-                    {error && (
-                        <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-3 mb-4 text-sm">
-                            {error}
-                        </div>
-                    )}
+                    {error && <div className="alert-error" style={{ marginBottom: 16 }}>{error}</div>}
 
-                    <form onSubmit={handleLogin} className="space-y-4">
+                    <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
-                            <input
-                                type="email"
-                                value={form.email}
-                                onChange={e => setForm({ ...form, email: e.target.value })}
-                                required
-                                placeholder="you@example.com"
-                                className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
-                            />
+                            <label className="hm-label">Email Address</label>
+                            <input className="hm-input" type="email" placeholder="you@example.com"
+                                value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} required />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
-                            <input
-                                type="password"
-                                value={form.password}
-                                onChange={e => setForm({ ...form, password: e.target.value })}
-                                required
-                                placeholder="········"
-                                className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
-                            />
+                            <label className="hm-label">Password</label>
+                            <input className="hm-input" type="password" placeholder="········"
+                                value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} required />
                         </div>
 
-                        <div className="flex justify-end">
-                            <button type="button" onClick={() => setForgotMode(true)} className="text-indigo-600 text-sm hover:underline">
+                        <div style={{ textAlign: 'right' }}>
+                            <button type="button" onClick={() => setForgotMode(true)}
+                                style={{ background: 'none', border: 'none', color: '#0891b2', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
                                 Forgot password?
                             </button>
                         </div>
 
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="w-full bg-indigo-600 text-white rounded-xl py-3 font-semibold hover:bg-indigo-700 disabled:opacity-60 transition-colors shadow-md"
-                        >
-                            {loading ? 'Signing in...' : 'Sign In'}
+                        <button type="submit" disabled={loading} className="btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '13px' }}>
+                            {loading ? <><span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} /> Signing in...</> : 'Sign In →'}
                         </button>
-                        <div className="flex items-center my-2">
-                            <div className="flex-1 h-px bg-slate-200" />
-                            <span className="px-2 text-xs text-slate-400 uppercase">or</span>
-                            <div className="flex-1 h-px bg-slate-200" />
+
+                        {/* Divider */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div style={{ flex: 1, height: 1, background: '#e0f2fe' }} />
+                            <span style={{ fontSize: 11, color: '#94a3b8', textTransform: 'uppercase', fontWeight: 600 }}>or</span>
+                            <div style={{ flex: 1, height: 1, background: '#e0f2fe' }} />
                         </div>
-                        <button
-                            type="button"
-                            onClick={() => alert('Google login is not yet configured in this demo.')}
-                            className="w-full border border-slate-200 bg-white text-slate-700 rounded-xl py-2.5 text-sm font-semibold hover:bg-slate-50 transition-colors flex items-center justify-center gap-2"
-                        >
-                            <span className="text-lg">G</span>
-                            <span>Continue with Google</span>
-                        </button>
+
+                        {GOOGLE_CLIENT_ID ? (
+                            <div ref={googleBtnRef} style={{ display: 'flex', justifyContent: 'center' }} />
+                        ) : (
+                            <button type="button"
+                                onClick={() => alert('Set VITE_GOOGLE_CLIENT_ID in .env to enable Google login.')}
+                                style={{
+                                    width: '100%', padding: '11px', borderRadius: 10,
+                                    border: '1.5px solid #e0f2fe', background: '#fff',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    gap: 10, fontSize: 14, fontWeight: 600, color: '#0c4a6e', cursor: 'pointer'
+                                }}>
+                                <span style={{ fontSize: 18 }}>G</span> Continue with Google
+                            </button>
+                        )}
                     </form>
 
-                    <p className="text-center text-sm text-slate-500 mt-6">
+                    <p style={{ textAlign: 'center', fontSize: 13, color: '#64748b', marginTop: 24 }}>
                         Don't have an account?{' '}
-                        <button onClick={onSwitchToRegister} className="text-indigo-600 font-semibold hover:underline">
-                            Create one
-                        </button>
+                        <Link to="/register" style={{ color: '#0891b2', fontWeight: 700, fontSize: 13, textDecoration: 'none' }}>
+                            Create one →
+                        </Link>
                     </p>
                 </div>
             </div>

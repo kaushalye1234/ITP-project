@@ -56,6 +56,16 @@ public class ReviewController {
         return ResponseEntity.ok(ApiResponse.ok("All reviews", reviewService.getAllReviews()));
     }
 
+    @GetMapping("/reviews/my")
+    public ResponseEntity<ApiResponse<List<Review>>> getMyReviews(Authentication auth) {
+        try {
+            Integer userId = getUserId(auth);
+            return ResponseEntity.ok(ApiResponse.ok("My reviews", reviewService.getMyReviews(userId)));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
     // --------- COMPLAINTS ---------
     @PostMapping("/complaints")
     public ResponseEntity<ApiResponse<Complaint>> submitComplaint(@Valid @RequestBody ComplaintCreateRequest body,
@@ -79,6 +89,16 @@ public class ReviewController {
         return ResponseEntity.ok(ApiResponse.ok("Complaints", reviewService.getAllComplaints()));
     }
 
+    @GetMapping("/complaints/my")
+    public ResponseEntity<ApiResponse<List<Complaint>>> getMyComplaints(Authentication auth) {
+        try {
+            Integer userId = getUserId(auth);
+            return ResponseEntity.ok(ApiResponse.ok("My complaints", reviewService.getMyComplaints(userId)));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
     @PatchMapping("/complaints/{id}/status")
     public ResponseEntity<ApiResponse<Complaint>> updateComplaintStatus(@PathVariable Integer id,
             @Valid @RequestBody ComplaintStatusUpdateRequest body) {
@@ -90,47 +110,7 @@ public class ReviewController {
         }
     }
 
-    // --------- MESSAGES ---------
-    @PostMapping("/messages/threads")
-    public ResponseEntity<ApiResponse<MessageThread>> createThread(@Valid @RequestBody MessageThreadCreateRequest body,
-            Authentication auth) {
-        try {
-            Integer myId = getUserId(auth);
-            MessageThread thread = reviewService.createThread(
-                    myId,
-                    body.getOtherUserId(),
-                    body.getBookingId());
-            return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok("Thread created", thread));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
-        }
-    }
-
-    @PostMapping("/messages")
-    public ResponseEntity<ApiResponse<Message>> sendMessage(@Valid @RequestBody MessageCreateRequest body,
-            Authentication auth) {
-        try {
-            Integer userId = getUserId(auth);
-            Message message = reviewService.sendMessage(
-                    body.getThreadId(),
-                    userId,
-                    body.getMessageText());
-            return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok("Message sent", message));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
-        }
-    }
-
-    @GetMapping("/messages/threads/{threadId}")
-    public ResponseEntity<ApiResponse<List<Message>>> getMessages(@PathVariable Integer threadId) {
-        return ResponseEntity.ok(ApiResponse.ok("Messages", reviewService.getThreadMessages(threadId)));
-    }
-
-    @GetMapping("/messages/threads")
-    public ResponseEntity<ApiResponse<List<MessageThread>>> getMyThreads(Authentication auth) {
-        Integer userId = getUserId(auth);
-        return ResponseEntity.ok(ApiResponse.ok("Threads", reviewService.getUserThreads(userId)));
-    }
+    // NOTE: Messaging endpoints moved to dedicated MessageController
 
     @PutMapping("/reviews/{id}")
     public ResponseEntity<ApiResponse<Review>> updateReview(@PathVariable Integer id,

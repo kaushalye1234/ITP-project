@@ -57,7 +57,8 @@ public class BookingController {
             return ResponseEntity.ok(ApiResponse.ok("Bookings fetched", bookings));
         } catch (RuntimeException e) {
             if ("Worker profile not found".equals(e.getMessage())) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Worker profile not found for the current user."));
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(ApiResponse.error("Worker profile not found for the current user."));
             }
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
@@ -125,6 +126,11 @@ public class BookingController {
     @GetMapping
     public ResponseEntity<ApiResponse<List<Booking>>> getAllBookings() {
         return ResponseEntity.ok(ApiResponse.ok("All bookings", bookingService.getAllBookings()));
+    }
+
+    @GetMapping("/worker/{workerId}/busy-dates")
+    public ResponseEntity<ApiResponse<List<java.time.LocalDate>>> getBusyDates(@PathVariable Integer workerId) {
+        return ResponseEntity.ok(ApiResponse.ok("Busy dates", bookingService.getWorkerBusyDates(workerId)));
     }
 
     private Integer getUserId(Authentication auth) {

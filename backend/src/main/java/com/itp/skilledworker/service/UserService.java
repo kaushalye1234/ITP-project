@@ -7,7 +7,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
+import com.itp.skilledworker.dto.UserProfileResponse;
+import com.itp.skilledworker.dto.UpdateProfileRequest;
 
 @Service
 @RequiredArgsConstructor
@@ -15,6 +19,9 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final WorkerProfileRepository workerProfileRepository;
+    private final CustomerProfileRepository customerProfileRepository;
+    private final SupplierProfileRepository supplierProfileRepository;
+    private final WorkerAvailabilityRepository workerAvailabilityRepository;
 
     public List<WorkerProfile> getAllWorkers(String district) {
         if (district != null && !district.isEmpty()) {
@@ -72,11 +79,151 @@ public class UserService {
         return userRepository.findAll();
     }
 
-    @Transactional
     public User toggleUserActive(Integer userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         user.setIsActive(!user.getIsActive());
         return userRepository.save(user);
+    }
+
+    public UserProfileResponse getProfileByEmail(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        var response = UserProfileResponse.builder()
+                .userId(user.getUserId())
+                .email(user.getEmail())
+                .role(user.getRole().name())
+                .phone(user.getPhone())
+                .build();
+
+        if (user.getRole() == User.Role.worker) {
+            workerProfileRepository.findByUser_UserId(user.getUserId()).ifPresent(p -> {
+                response.setFirstName(p.getFirstName());
+                response.setLastName(p.getLastName());
+                response.setCity(p.getCity());
+                response.setDistrict(p.getDistrict());
+                response.setProfilePicture(p.getProfilePicture());
+                response.setBio(p.getBio());
+                response.setHourlyRateMin(p.getHourlyRateMin());
+                response.setHourlyRateMax(p.getHourlyRateMax());
+                response.setAverageRating(p.getAverageRating() != null ? p.getAverageRating().doubleValue() : 0.0);
+            });
+        } else if (user.getRole() == User.Role.customer) {
+            customerProfileRepository.findByUser_UserId(user.getUserId()).ifPresent(p -> {
+                response.setFirstName(p.getFirstName());
+                response.setLastName(p.getLastName());
+                response.setCity(p.getCity());
+                response.setDistrict(p.getDistrict());
+                response.setProfilePicture(p.getProfilePicture());
+            });
+        } else if (user.getRole() == User.Role.supplier) {
+            supplierProfileRepository.findByUser_UserId(user.getUserId()).ifPresent(p -> {
+                response.setBusinessName(p.getBusinessName());
+                response.setBusinessRegistrationNumber(p.getBusinessRegistrationNumber());
+                response.setContactPersonName(p.getContactPersonName());
+                response.setCity(p.getCity());
+                response.setDistrict(p.getDistrict());
+            });
+        }
+
+        return response;
+    }
+
+    @Transactional
+    public UserProfileResponse updateProfileByEmail(String email, UpdateProfileRequest updated) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (updated.getPhone() != null)
+            user.setPhone(updated.getPhone());
+        userRepository.save(user);
+
+        if (user.getRole() == User.Role.worker) {
+            WorkerProfile p = workerProfileRepository.findByUser_UserId(user.getUserId())
+                    .orElseThrow(() -> new RuntimeException("Worker profile not found"));
+            if (updated.getFirstName() != null)
+                p.setFirstName(updated.getFirstName());
+            if (updated.getLastName() != null)
+                p.setLastName(updated.getLastName());
+            if (updated.getCity() != null)
+                p.setCity(updated.getCity());
+            if (updated.getDistrict() != null)
+                p.setDistrict(updated.getDistrict());
+            if (updated.getBio() != null)
+                p.setBio(updated.getBio());
+            if (updated.getHourlyRateMin() != null)
+                p.setHourlyRateMin(updated.getHourlyRateMin());
+            if (updated.getHourlyRateMax() != null)
+                p.setHourlyRateMax(updated.getHourlyRateMax());
+            if (updated.getProfilePicture() != null)
+                p.setProfilePicture(updated.getProfilePicture());
+            workerProfileRepository.save(p);
+        } else if (user.getRole() == User.Role.customer) {
+            CustomerProfile p = customerProfileRepository.findByUser_UserId(user.getUserId())
+                    .orElseThrow(() -> new RuntimeException("Customer profile not found"));
+            if (updated.getFirstName() != null)
+                p.setFirstName(updated.getFirstName());
+            if (updated.getLastName() != null)
+                p.setLastName(updated.getLastName());
+            if (updated.getCity() != null)
+                p.setCity(updated.getCity());
+            if (updated.getDistrict() != null)
+                p.setDistrict(updated.getDistrict());
+            if (updated.getProfilePicture() != null)
+                p.setProfilePicture(updated.getProfilePicture());
+            customerProfileRepository.save(p);
+        } else if (user.getRole() == User.Role.supplier) {
+            SupplierProfile p = supplierProfileRepository.findByUser_UserId(user.getUserId())
+                    .orElseThrow(() -> new RuntimeException("Supplier profile not found"));
+            if (updated.getBusinessName() != null)
+                p.setBusinessName(updated.getBusinessName());
+            if (updated.getBusinessRegistrationNumber() != null)
+                p.setBusinessRegistrationNumber(updated.getBusinessRegistrationNumber());
+            if (updated.getContactPersonName() != null)
+                p.setContactPersonName(updated.getContactPersonName());
+            if (updated.getCity() != null)
+                p.setCity(updated.getCity());
+            if (updated.getDistrict() != null)
+                p.setDistrict(updated.getDistrict());
+            supplierProfileRepository.save(p);
+        }
+
+        return getProfileByEmail(email);
+    }
+
+    public List<WorkerAvailability> getWorkerAvailability(Integer workerId) {
+        return workerAvailabilityRepository.findByWorker_WorkerIdAndAvailableDateGreaterThanEqual(workerId,
+                LocalDate.now());
+    }
+
+    @Transactional
+    public WorkerAvailability addAvailability(String email, LocalDate date, LocalTime start, LocalTime end,
+            String note) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        WorkerProfile worker = workerProfileRepository.findByUser_UserId(user.getUserId())
+                .orElseThrow(() -> new RuntimeException("Worker profile not found"));
+
+        WorkerAvailability availability = new WorkerAvailability();
+        availability.setWorker(worker);
+        availability.setAvailableDate(date);
+        availability.setStartTime(start);
+        availability.setEndTime(end);
+        availability.setNote(note);
+        return workerAvailabilityRepository.save(availability);
+    }
+
+    @Transactional
+    public void deleteAvailability(String email, Long availabilityId) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        WorkerAvailability availability = workerAvailabilityRepository.findById(availabilityId)
+                .orElseThrow(() -> new RuntimeException("Availability not found"));
+
+        if (!availability.getWorker().getUser().getUserId().equals(user.getUserId())) {
+            throw new RuntimeException("Unauthorized: You don't own this availability record");
+        }
+        workerAvailabilityRepository.delete(availability);
     }
 }

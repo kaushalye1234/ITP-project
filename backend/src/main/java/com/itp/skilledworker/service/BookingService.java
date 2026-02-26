@@ -9,7 +9,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -25,18 +24,33 @@ public class BookingService {
     @Transactional
     public Booking createBooking(Integer jobId, Integer workerId, Integer customerUserId,
             String scheduledDate, String scheduledTime, String notes) {
-        Job job = jobRepository.findById(jobId)
-                .orElseThrow(() -> new RuntimeException("Job not found"));
+        // job is optional – customers can book workers directly
+        Job job = null;
+        if (jobId != null) {
+            job = jobRepository.findById(jobId)
+                    .orElseThrow(() -> new RuntimeException("Job not found"));
+        }
         WorkerProfile worker = workerProfileRepository.findById(workerId)
                 .orElseThrow(() -> new RuntimeException("Worker not found"));
         CustomerProfile customer = customerProfileRepository.findByUser_UserId(customerUserId)
-                .orElseThrow(() -> new RuntimeException("Customer profile not found"));
+                .orElseThrow(
+                        () -> new RuntimeException("Customer profile not found. Please complete your profile first."));
+
+        LocalDate date = LocalDate.parse(scheduledDate);
+
+        List<Booking> conflicts = bookingRepository.findConflictingBookings(
+                worker.getWorkerId(), date,
+                List.of(Booking.BookingStatus.accepted, Booking.BookingStatus.in_progress));
+        if (!conflicts.isEmpty()) {
+            throw new RuntimeException("Worker is already booked on " + date +
+                    ". They have " + conflicts.size() + " active booking(s) that day.");
+        }
 
         Booking booking = new Booking();
         booking.setJob(job);
         booking.setWorker(worker);
         booking.setCustomer(customer);
-        booking.setScheduledDate(LocalDate.parse(scheduledDate));
+        booking.setScheduledDate(date);
         booking.setScheduledTime(LocalTime.parse(scheduledTime));
         booking.setNotes(notes);
         booking.setBookingStatus(Booking.BookingStatus.requested);
@@ -146,5 +160,15 @@ public class BookingService {
 
     public List<Booking> getAllBookings() {
         return bookingRepository.findAll();
+    }
+
+    public List<LocalDate> getWorkerBusyDates(Integer workerId) {
+        return bookingRepository.findConflictingBookings(
+                workerId,
+                List.of(Booking.BookingStatus.accepted, Booking.BookingStatus.in_progress))
+                .stream()
+                .map(Booking::getScheduledDate)
+                .distinct()
+                .toList();
     }
 }

@@ -1,71 +1,207 @@
+import { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 
-const BASE_NAV_ITEMS = [
-    { key: 'dashboard', label: '🏠 Dashboard' },
-    { key: 'workers', label: '👷 Workers' },
-    { key: 'jobs', label: '📋 Jobs' },
-    { key: 'bookings', label: '📅 Bookings' },
-    { key: 'reviews', label: '⭐ Reviews' },
-    { key: 'equipment', label: '🔧 Equipment' },
+const NAV_ITEMS = [
+    { path: '/dashboard', label: 'Home', icon: '⌂' },
+    { path: '/workers', label: 'Workers', icon: '👷' },
+    { path: '/jobs', label: 'Jobs', icon: '📋' },
+    { path: '/bookings', label: 'Bookings', icon: '📅' },
+    { path: '/reviews', label: 'Reviews', icon: '⭐' },
+    { path: '/equipment', label: 'Equipment', icon: '🔧' },
+    { path: '/complaints', label: 'Complaints', icon: '⚠' },
+    { path: '/messages', label: 'Messages', icon: '💬' },
 ];
 
-function getNavItemsForRole(role) {
+const ROLE_STYLES = {
+    customer: { bg: '#dcfce7', color: '#15803d', label: 'Customer' },
+    worker: { bg: '#dbeafe', color: '#1d4ed8', label: 'Worker' },
+    supplier: { bg: '#ede9fe', color: '#6d28d9', label: 'Supplier' },
+    admin: { bg: '#fee2e2', color: '#b91c1c', label: 'Admin' },
+};
+
+function getNavItems(role) {
     switch (role) {
-        case 'customer':
-            return BASE_NAV_ITEMS;
-        case 'worker':
-            return BASE_NAV_ITEMS.filter(item => item.key !== 'workers'); // workers list less relevant
-        case 'supplier':
-            return BASE_NAV_ITEMS.filter(item => ['dashboard', 'bookings', 'equipment'].includes(item.key));
-        case 'admin':
-            return BASE_NAV_ITEMS;
-        default:
-            return BASE_NAV_ITEMS;
+        case 'worker': return NAV_ITEMS.filter(i => i.path !== '/workers');
+        case 'supplier': return NAV_ITEMS.filter(i => ['/dashboard', '/bookings', '/equipment', '/messages'].includes(i.path));
+        case 'admin': return [...NAV_ITEMS, { path: '/admin/users', label: 'Users', icon: '👥' },
+        { path: '/admin/reports', label: 'Reports', icon: '📊' }];
+        default: return NAV_ITEMS;
     }
 }
 
-export default function Navbar({ currentPage, setPage }) {
+function initials(email = '') {
+    return email.split('@')[0].slice(0, 2).toUpperCase();
+}
+
+export default function Navbar() {
+    const navigate = useNavigate();
+    const location = useLocation();
     const { user, logout } = useAuth();
-    const items = getNavItemsForRole(user?.role);
+    const [hovered, setHovered] = useState(null);
+    const items = getNavItems(user?.role);
+    const roleStyle = ROLE_STYLES[user?.role] || { bg: '#f1f5f9', color: '#475569', label: user?.role };
+
+    const handleLogout = () => { logout(); navigate('/login'); };
 
     return (
-        <header className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
-            <div className="max-w-7xl mx-auto px-4 flex items-center justify-between h-16">
-                {/* Logo */}
-                <div className="flex items-center gap-3">
-                    <div className="bg-indigo-600 text-white w-9 h-9 rounded-xl flex items-center justify-center font-bold text-lg">
-                        S
-                    </div>
-                    <span className="font-bold text-slate-800 text-lg hidden sm:block">SkillConnect</span>
-                </div>
+        <header style={{
+            background: 'rgba(255,255,255,0.82)',
+            backdropFilter: 'blur(20px) saturate(200%)',
+            WebkitBackdropFilter: 'blur(20px) saturate(200%)',
+            borderBottom: '1px solid rgba(226,232,240,0.8)',
+            position: 'sticky',
+            top: 0,
+            zIndex: 200,
+            boxShadow: '0 2px 20px rgba(15,23,42,0.06)',
+        }}>
+            <div style={{
+                maxWidth: 1280,
+                margin: '0 auto',
+                padding: '0 24px',
+                height: 62,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+            }}>
 
-                {/* Nav Links */}
-                <nav className="flex items-center gap-1">
-                    {items.map((item) => (
-                        <button
-                            key={item.key}
-                            onClick={() => setPage(item.key)}
-                            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${currentPage === item.key
-                                    ? 'bg-indigo-600 text-white shadow'
-                                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                                }`}
-                        >
-                            {item.label}
-                        </button>
-                    ))}
+                {/* ── Logo ── */}
+                <button
+                    onClick={() => navigate('/dashboard')}
+                    style={{
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        flexShrink: 0, padding: '4px 12px 4px 0',
+                        marginRight: 8,
+                    }}
+                >
+                    <div style={{
+                        width: 34, height: 34,
+                        background: 'linear-gradient(135deg, #0891b2, #0e7490)',
+                        borderRadius: 10,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: '#fff', fontSize: 16, fontWeight: 900,
+                        boxShadow: '0 4px 12px rgba(8,145,178,0.35)',
+                        flexShrink: 0,
+                    }}>S</div>
+                    <span style={{
+                        fontFamily: "'Outfit', sans-serif",
+                        fontWeight: 800, fontSize: 17,
+                        background: 'linear-gradient(135deg, #0891b2, #0c4a6e)',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                        letterSpacing: '-0.5px',
+                    }}>
+                        SkillConnect
+                    </span>
+                </button>
+
+                {/* ── Nav links ── */}
+                <nav style={{
+                    display: 'flex', gap: 2, flex: 1,
+                    justifyContent: 'center', flexWrap: 'nowrap',
+                    overflow: 'hidden',
+                }}>
+                    {items.map(item => {
+                        const active = location.pathname === item.path
+                            || (item.path !== '/dashboard' && location.pathname.startsWith(item.path + '/'));
+                        const isHovered = hovered === item.path;
+                        return (
+                            <button
+                                key={item.path}
+                                onClick={() => navigate(item.path)}
+                                onMouseEnter={() => setHovered(item.path)}
+                                onMouseLeave={() => setHovered(null)}
+                                style={{
+                                    padding: '6px 13px',
+                                    borderRadius: 10,
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    fontSize: 13.5,
+                                    fontFamily: "'Outfit', sans-serif",
+                                    fontWeight: active ? 700 : 500,
+                                    transition: 'all 0.18s cubic-bezier(0.4,0,0.2,1)',
+                                    background: active
+                                        ? 'linear-gradient(135deg, #0891b2, #0e7490)'
+                                        : isHovered ? '#f0f9ff' : 'transparent',
+                                    color: active ? '#fff' : isHovered ? '#0891b2' : '#64748b',
+                                    boxShadow: active ? '0 4px 14px rgba(8,145,178,0.30)' : 'none',
+                                    whiteSpace: 'nowrap',
+                                    position: 'relative',
+                                }}
+                            >
+                                {item.label}
+                                {active && (
+                                    <span style={{
+                                        position: 'absolute', bottom: -1, left: '50%',
+                                        transform: 'translateX(-50%)',
+                                        width: 4, height: 4, borderRadius: '50%',
+                                        background: 'rgba(255,255,255,0.7)',
+                                    }} />
+                                )}
+                            </button>
+                        );
+                    })}
                 </nav>
 
-                {/* User info & logout */}
-                <div className="flex items-center gap-3">
-                    <div className="hidden sm:flex flex-col items-end">
-                        <span className="text-sm font-semibold text-slate-800">{user?.email}</span>
-                        <span className="text-xs capitalize text-indigo-600 font-medium">{user?.role}</span>
-                    </div>
+                {/* ── Right side ── */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, marginLeft: 8 }}>
+
+                    {/* Role badge */}
+                    <span style={{
+                        background: roleStyle.bg,
+                        color: roleStyle.color,
+                        fontSize: 11, fontWeight: 800,
+                        padding: '3px 10px',
+                        borderRadius: 99,
+                        letterSpacing: '0.04em',
+                        textTransform: 'uppercase',
+                        fontFamily: "'Outfit', sans-serif",
+                    }}>
+                        {roleStyle.label}
+                    </span>
+
+                    {/* Avatar */}
                     <button
-                        onClick={logout}
-                        className="bg-red-50 text-red-600 hover:bg-red-100 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+                        onClick={() => navigate('/profile')}
+                        title={user?.email}
+                        style={{
+                            width: 36, height: 36, borderRadius: '50%',
+                            background: 'linear-gradient(135deg, #0891b2, #06b6d4)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            color: '#fff', fontWeight: 900, fontSize: 12.5,
+                            fontFamily: "'Outfit', sans-serif",
+                            boxShadow: '0 3px 10px rgba(8,145,178,0.35)',
+                            flexShrink: 0, border: '2px solid rgba(255,255,255,0.9)',
+                            cursor: 'pointer',
+                            transition: 'all 0.18s',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.08)'; e.currentTarget.style.boxShadow = '0 5px 16px rgba(8,145,178,0.45)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 3px 10px rgba(8,145,178,0.35)'; }}
                     >
-                        Logout
+                        {initials(user?.email)}
+                    </button>
+
+                    {/* Sign out */}
+                    <button
+                        onClick={handleLogout}
+                        style={{
+                            background: '#fef2f2',
+                            color: '#ef4444',
+                            border: '1.5px solid #fecaca',
+                            borderRadius: 10,
+                            padding: '6px 14px',
+                            fontSize: 12.5, fontWeight: 700,
+                            fontFamily: "'Outfit', sans-serif",
+                            cursor: 'pointer',
+                            transition: 'all 0.18s',
+                            whiteSpace: 'nowrap',
+                            letterSpacing: '0.01em',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = '#fee2e2'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                    >
+                        Sign out
                     </button>
                 </div>
             </div>
