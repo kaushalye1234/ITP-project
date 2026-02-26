@@ -143,7 +143,7 @@ public class EquipmentService {
 
         long daysOverdue = ChronoUnit.DAYS.between(updated.getRentalEndDate(), LocalDate.now());
         BigDecimal dailyLateFeeRate = daysOverdue > 0
-                ? updated.getLateFee().divide(BigDecimal.valueOf(daysOverdue))
+                ? updated.getLateFee().divide(BigDecimal.valueOf(daysOverdue), 2, java.math.RoundingMode.HALF_UP)
                 : BigDecimal.ZERO;
 
         return Map.of(

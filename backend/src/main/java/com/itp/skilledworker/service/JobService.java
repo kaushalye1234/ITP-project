@@ -18,6 +18,8 @@ public class JobService {
     private final JobRepository jobRepository;
     private final JobCategoryRepository categoryRepository;
     private final CustomerProfileRepository customerProfileRepository;
+    private final JobApplicationRepository jobApplicationRepository;
+    private final UserRepository userRepository;
 
     @Transactional
     public Job createJob(Integer customerUserId, Integer categoryId, String title, String description,
@@ -96,5 +98,75 @@ public class JobService {
         CustomerProfile customer = customerProfileRepository.findByUser_UserId(customerUserId)
                 .orElseThrow(() -> new RuntimeException("Customer profile not found"));
         return jobRepository.findByCustomer_CustomerId(customer.getCustomerId());
+    }
+
+    @Transactional
+    public JobApplication applyToJob(Integer jobId, Integer workerUserId, String coverNote, BigDecimal proposedPrice) {
+        Job job = getJobById(jobId);
+        if (job.getJobStatus() != Job.JobStatus.active) {
+            throw new RuntimeException("Can only apply to active jobs");
+        }
+        if (jobApplicationRepository.existsByJob_JobIdAndWorkerUser_UserId(jobId, workerUserId)) {
+            throw new RuntimeException("You have already applied to this job");
+        }
+        User worker = userRepository.findById(workerUserId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        JobApplication application = new JobApplication();
+        application.setJob(job);
+        application.setWorkerUser(worker);
+        application.setCoverNote(coverNote);
+        application.setProposedPrice(proposedPrice);
+        application.setStatus(JobApplication.ApplicationStatus.pending);
+        return jobApplicationRepository.save(application);
+    }
+
+    public List<JobApplication> getJobApplications(Integer jobId, Integer customerUserId) {
+        Job job = getJobById(jobId);
+        if (!job.getCustomer().getUser().getUserId().equals(customerUserId)) {
+            throw new RuntimeException("Unauthorized: You don't own this job");
+        }
+        return jobApplicationRepository.findByJob_JobId(jobId);
+    }
+
+    @Transactional
+    public JobApplication updateApplicationStatus(Integer jobId, Long applicationId,
+            Integer customerUserId, String status) {
+        Job job = getJobById(jobId);
+        if (!job.getCustomer().getUser().getUserId().equals(customerUserId)) {
+            throw new RuntimeException("Unauthorized: You don't own this job");
+        }
+        JobApplication application = jobApplicationRepository.findById(applicationId)
+                .orElseThrow(() -> new RuntimeException("Application not found"));
+        if (!application.getJob().getJobId().equals(jobId)) {
+            throw new RuntimeException("Application does not belong to this job");
+        }
+        application.setStatus(JobApplication.ApplicationStatus.valueOf(status.toLowerCase()));
+
+        if ("accepted".equalsIgnoreCase(status)) {
+            List<JobApplication> others = jobApplicationRepository.findByJob_JobId(jobId);
+            for (JobApplication other : others) {
+                if (!other.getApplicationId().equals(applicationId)
+                        && other.getStatus() == JobApplication.ApplicationStatus.pending) {
+                    other.setStatus(JobApplication.ApplicationStatus.rejected);
+                    jobApplicationRepository.save(other);
+                }
+            }
+        }
+        return jobApplicationRepository.save(application);
+    }
+
+    public List<JobApplication> getWorkerApplications(Integer workerUserId) {
+        return jobApplicationRepository.findByWorkerUser_UserId(workerUserId);
+    }
+
+    @Transactional
+    public Job updateJobStatus(Integer jobId, Integer customerUserId, String status) {
+        Job job = getJobById(jobId);
+        if (!job.getCustomer().getUser().getUserId().equals(customerUserId)) {
+            throw new RuntimeException("Unauthorized: You don't own this job");
+        }
+        job.setJobStatus(Job.JobStatus.valueOf(status.toLowerCase()));
+        return jobRepository.save(job);
     }
 }
